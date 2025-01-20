@@ -66,9 +66,9 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        screen.fill("black")
     if pygame.key.get_pressed():
         player_group.update()
+    screen.fill("black")
     all_sprites.draw(screen)
     all_sprites.update()
     player_group.draw(screen)
