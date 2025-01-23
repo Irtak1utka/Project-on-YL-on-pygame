@@ -51,6 +51,7 @@ class Player(pygame.sprite.Sprite):
             print("You fail")
 
 
+
 class Water(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
