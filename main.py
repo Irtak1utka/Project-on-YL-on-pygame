@@ -153,7 +153,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(player_group, all_sprites)
         self.frames = []
-        self.cut_sheet(load_image("sprites/Players/DinoSprites - vita.png"), 24, 1)
+        self.cut_sheet(load_image("sprites/Players/DinoSprites - vita-export try2.png"), 24, 1)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
@@ -162,6 +162,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.jumpCount = 0
         self.jumpMax = 13
         self.vector = 1
+        self.gravity = 4
 
     def cut_sheet(self, sheet, columns, rows):
         self.tile_height = sheet.get_height() // rows
@@ -196,7 +197,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 self.vector = 1
         else:
             st = 0
-            ed = 2
+            ed = 4
         self.fr = self.frames[st:ed]
         self.cur_frame = (self.cur_frame + 1) % len(self.fr)
         self.image = self.fr[self.cur_frame]
@@ -210,11 +211,30 @@ class AnimatedSprite(pygame.sprite.Sprite):
             else:
                 self.jump = False
         speed = 2
-        self.rect.move_ip(0, 4)
+        self.rect.move_ip(0, self.gravity)
         for el in wall_group.sprites():
             if isinstance(el, Box):
                 if pygame.sprite.collide_rect(player_group.sprites()[0], el):
-                    self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height) + 4)
+                    if el.rect.y + tile_height > self.rect.y and self.rect.y + self.tile_height > el.rect.y + tile_height:
+                        self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
+                        print("Down")
+                    if self.rect.x + self.tile_width - el.rect.x <= speed:
+                        if self.rect.y + self.tile_height > el.rect.y - self.tile_height:
+                            self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
+                        elif self.rect.y + self.tile_height > el.rect.y + tile_height:
+                            self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
+                            print("left")
+                    if el.rect.x + tile_width - self.rect.x <= speed:
+                        if self.rect.y + self.tile_height > el.rect.y:
+                            print(self.rect.y + self.tile_height, el.rect.y - self.tile_height)
+                            self.rect.move_ip(el.rect.x + tile_width - self.rect.x, 0)
+                            print("right 1")
+                        elif self.rect.y + self.tile_height > el.rect.y + tile_height:
+                            self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
+                            print("right 2")
+                    if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
+                        self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
+                        print("Up")
         self.rect.move_ip(speed * (d - a), 0)
 
 
