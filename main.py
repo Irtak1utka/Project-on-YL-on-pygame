@@ -19,7 +19,6 @@ def terminate():
     pygame.quit()
     sys.exit()
 
-
 def rot_center(image, angle):
     """rotate a Surface, maintaining position."""
     loc = image.get_rect().center  # rot_image is not defined
@@ -100,10 +99,6 @@ def generate_level(file_path):
         for y, line in enumerate(level_map):
             for x, key in enumerate(line):
                 if key == g_o:
-                    if key == "G" or key == 'R':
-                        cls = game_object.get(".", None)
-                        if cls is not None:
-                            cls(x, y)
                     cls = game_object.get(key, None)
                     if cls is not None:
                         if key == 'R':
@@ -111,9 +106,9 @@ def generate_level(file_path):
                         elif key == 'G':
                             cls(x * tile_width, y * tile_height, 'sprites/Players/dino.png', 'g')
                         elif key == 'r':
-                            cls(x * tile_width, y * tile_height, 'r')
+                            cls(x, y, 'r')
                         elif key == 'g':
-                            cls(x * tile_width, y * tile_height, 'g')
+                            cls(x, y, 'g')
                         else:
                             cls(x, y)
 
@@ -148,6 +143,7 @@ class Box(pygame.sprite.Sprite):
 class Spike(pygame.sprite.Sprite):
     def __init__(self, x, y, color, *groups):
         super().__init__(all_sprites, wall_group, *groups)
+        self.color = color
         if color == 'r':
             self.image = sprites["lava"]
             print('lava')
@@ -155,6 +151,9 @@ class Spike(pygame.sprite.Sprite):
             self.image = sprites['water']
             print('water')
         self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+
+    def get_color(self):
+        return self.color
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -183,6 +182,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 frame_location = (self.rect.w * i, self.rect.h * j)
                 self.frames.append(sheet.subsurface(pygame.Rect(
                     frame_location, self.rect.size)))
+
     def update(self):
         pressed_keys = pygame.key.get_pressed()
         if self.color == 'r':
@@ -226,7 +226,8 @@ class AnimatedSprite(pygame.sprite.Sprite):
         speed = 2
         self.rect.move_ip(0, self.gravity)
         for el in wall_group.sprites():
-            if isinstance(el, Box):
+            if isinstance(el, Box) or (isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'r') or (
+                    isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'g'):
                 if pygame.sprite.collide_rect(self, el):
                     if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
                         self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
@@ -241,9 +242,11 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     if el.rect.y + tile_height - self.rect.y <= self.jumpMax and self.rect.y + self.tile_height > el.rect.y + tile_height:
                         self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
                         print("Down")
+            elif (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
+                isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
+                if pygame.sprite.collide_rect(self, el):
+                    terminate()
         self.rect.move_ip(speed * (d - a), 0)
-
-
 
 
 game_object = {
