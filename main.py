@@ -31,21 +31,23 @@ def rot_center(image, angle):
 
 
 def start_screen():
-    intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
+    intro_text = ["                       ОГОНЬ И ЗЕМЛЯ", "", '', '',
+                  "Ваша задача - вместе решать головоломки.",
+                  "Зеленый динозаврик не может наступать на",
+                  "красные области,",
+                  "а красный - на зелёные.",
+                  ""]
 
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
+    font = pygame.font.Font(None, 50)
+    text_coord = 100
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        string_rendered = font.render(line, 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
+        intro_rect.x = 100
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
@@ -87,8 +89,8 @@ def load_level(file_path: str):
 
 sprites = {
     "box": load_image('sprites/Box/ground.png'),
-    # "grass": load_image("grass.png"),
-    # "mario": load_image("mario.png")
+    "water": load_image("sprites/Spikes/water.png"),
+    "lava": load_image("sprites/Spikes/lava.png")
 }
 
 
@@ -105,9 +107,13 @@ def generate_level(file_path):
                     cls = game_object.get(key, None)
                     if cls is not None:
                         if key == 'R':
-                            cls(x * tile_width, y * tile_height, 'red_dino.png')
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/red_dino.png', 'r')
                         elif key == 'G':
-                            cls(x * tile_width, y * tile_height, 'dino.png')
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/dino.png', 'g')
+                        elif key == 'r':
+                            cls(x * tile_width, y * tile_height, 'r')
+                        elif key == 'g':
+                            cls(x * tile_width, y * tile_height, 'g')
                         else:
                             cls(x, y)
 
@@ -140,17 +146,22 @@ class Box(pygame.sprite.Sprite):
 
 
 class Spike(pygame.sprite.Sprite):
-    def __init__(self, x, y, *groups):
+    def __init__(self, x, y, color, *groups):
         super().__init__(all_sprites, wall_group, *groups)
-        self.image = sprites["mario"]
+        if color == 'r':
+            self.image = sprites["lava"]
+            print('lava')
+        else:
+            self.image = sprites['water']
+            print('water')
         self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, x, y, fn):
+    def __init__(self, x, y, fn, color):
         super().__init__(player_group, all_sprites)
         self.frames = []
-        self.cut_sheet(load_image('sprites/Players/' + fn), 24, 1)
+        self.cut_sheet(load_image(fn), 24, 1)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
@@ -159,6 +170,8 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.jumpCount = 0
         self.jumpMax = 13
         self.vector = 1
+        self.color = color
+        self.gravity = 4
 
     def cut_sheet(self, sheet, columns, rows):
         self.tile_height = sheet.get_height() // rows
@@ -170,14 +183,16 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 frame_location = (self.rect.w * i, self.rect.h * j)
                 self.frames.append(sheet.subsurface(pygame.Rect(
                     frame_location, self.rect.size)))
-
-
-class Red_dino(AnimatedSprite):
     def update(self):
         pressed_keys = pygame.key.get_pressed()
-        w = pressed_keys[pygame.K_UP]
-        d = pressed_keys[pygame.K_RIGHT]
-        a = pressed_keys[pygame.K_LEFT]
+        if self.color == 'r':
+            w = pressed_keys[pygame.K_UP]
+            d = pressed_keys[pygame.K_RIGHT]
+            a = pressed_keys[pygame.K_LEFT]
+        else:
+            w = pressed_keys[pygame.K_w]
+            d = pressed_keys[pygame.K_d]
+            a = pressed_keys[pygame.K_a]
         if a and not (w and d):
             st = 2
             ed = 6
@@ -209,64 +224,33 @@ class Red_dino(AnimatedSprite):
             else:
                 self.jump = False
         speed = 2
-        self.rect.move_ip(0, 4)
+        self.rect.move_ip(0, self.gravity)
         for el in wall_group.sprites():
             if isinstance(el, Box):
-                if pygame.sprite.collide_rect(player_group.sprites()[0], el):
-                    self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height) + 4)
+                if pygame.sprite.collide_rect(self, el):
+                    if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
+                        self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
+                        print("Up")
+                        self.jump = False
+                    if self.rect.x + self.tile_width - el.rect.x <= speed:
+                        self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
+                        print("left")
+                    if el.rect.x + tile_width - self.rect.x <= speed and self.rect.y + self.tile_height - el.rect.y > self.gravity:
+                        self.rect.move_ip(el.rect.x + tile_width - self.rect.x, 0)
+                        print("right")
+                    if el.rect.y + tile_height - self.rect.y <= self.jumpMax and self.rect.y + self.tile_height > el.rect.y + tile_height:
+                        self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
+                        print("Down")
         self.rect.move_ip(speed * (d - a), 0)
 
 
-class Green_dino(AnimatedSprite):
-    def update(self):
-        pressed_keys = pygame.key.get_pressed()
-        w = pressed_keys[pygame.K_w]
-        d = pressed_keys[pygame.K_d]
-        a = pressed_keys[pygame.K_a]
-        if a and not (w and d):
-            st = 2
-            ed = 6
-            if self.vector == 1:
-                self.frames = [pygame.transform.flip(i, True, False) for i in self.frames]
-                self.vector = -1
-        elif w and not (a or d):
-            st = 6
-            ed = 10
-        elif d and not (a or w):
-            st = 2
-            ed = 6
-            if self.vector == -1:
-                self.frames = [pygame.transform.flip(i, True, False) for i in self.frames]
-                self.vector = 1
-        else:
-            st = 0
-            ed = 2
-        self.fr = self.frames[st:ed]
-        self.cur_frame = (self.cur_frame + 1) % len(self.fr)
-        self.image = self.fr[self.cur_frame]
-        if not self.jump and w:
-            self.jump = True
-            self.jumpCount = self.jumpMax
-        if self.jump:
-            self.rect.y -= self.jumpCount
-            if self.jumpCount > -self.jumpMax:
-                self.jumpCount -= 1
-            else:
-                self.jump = False
-        speed = 2
-        self.rect.move_ip(0, 4)
-        for el in wall_group.sprites():
-            if isinstance(el, Box):
-                if pygame.sprite.collide_rect(player_group.sprites()[0], el):
-                    self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height) + 4)
-        self.rect.move_ip(speed * (d - a), 0)
 
 
 game_object = {
-    "G": Green_dino,
-    'R': Red_dino,
- #   "r": Red, #это будут классы
-  #  'g': Green,
+    "G": AnimatedSprite,
+    'R': AnimatedSprite,
+    "r": Spike,
+    'g': Spike,
     "#": Box,
 }
 
