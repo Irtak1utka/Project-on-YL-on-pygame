@@ -94,6 +94,8 @@ sprites = {
 
 
 def generate_level(file_path):
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
     level_map = load_level(file_path)
     for g_o in game_object:
         for y, line in enumerate(level_map):
@@ -104,7 +106,7 @@ def generate_level(file_path):
                         if key == 'R':
                             cls(x * tile_width, y * tile_height, 'sprites/Players/red_dino.png', 'r')
                         elif key == 'G':
-                            cls(x * tile_width, y * tile_height, 'sprites/Players/dino.png', 'g')
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/green_dino.png', 'g')
                         elif key == 'r':
                             cls(x, y, 'r')
                         elif key == 'g':
@@ -114,12 +116,15 @@ def generate_level(file_path):
 
 
 def game_screen(file_path):
+    print(player_group.sprites())
+    print(all_sprites.sprites())
     generate_level("level1.txt")
-    while True:
+    death = False
+    while not death:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN and not player_group.sprites()[0].get_death():
                 player_group.update()
         fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
@@ -129,8 +134,11 @@ def game_screen(file_path):
         pygame.display.flip()
         clock.tick(FPS)
 
+def death_screen():
+    for sprite in all_sprites:
+        sprite.kill()
 
-tile_width = tile_height = 50
+tile_width = tile_height = 32
 
 
 class Box(pygame.sprite.Sprite):
@@ -157,8 +165,9 @@ class Spike(pygame.sprite.Sprite):
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, x, y, fn, color):
-        super().__init__(player_group, all_sprites)
+    def __init__(self, x, y, fn, color, *groups):
+        self.death = False
+        super().__init__(all_sprites, player_group, *groups)
         self.frames = []
         self.cut_sheet(load_image(fn), 24, 1)
         self.cur_frame = 0
@@ -171,6 +180,12 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.vector = 1
         self.color = color
         self.gravity = 4
+
+    def get_death(self):
+        return self.death
+
+    def set_death(self, b):
+        self.death = b
 
     def cut_sheet(self, sheet, columns, rows):
         self.tile_height = sheet.get_height() // rows
@@ -245,7 +260,8 @@ class AnimatedSprite(pygame.sprite.Sprite):
             elif (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
                 isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
                 if pygame.sprite.collide_rect(self, el):
-                    terminate()
+                    player_group.sprites()[0].set_death(True)
+                    death_screen()
         self.rect.move_ip(speed * (d - a), 0)
 
 
