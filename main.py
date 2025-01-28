@@ -8,6 +8,7 @@ size = WIDTH, HEIGHT = 1000, 800
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 FPS = 30
+move_counter = 0
 
 all_sprites = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
@@ -64,6 +65,7 @@ def levels_screen():
                         return game_screen(levels[i])
         pygame.display.flip()
         clock.tick(FPS)
+
 
 def start_screen():
     intro_text = ["                       ОГОНЬ И ЗЕМЛЯ", "", '', '',
@@ -126,7 +128,8 @@ def load_level(file_path: str):
 sprites = {
     "box": load_image('sprites/Box/ground.png'),
     "water": load_image("sprites/Spikes/water.png"),
-    "lava": load_image("sprites/Spikes/lava.png")
+    "lava": load_image("sprites/Spikes/lava.png"),
+    'move_platform': load_image('sprites/Box/Tile_07.png')
 }
 
 
@@ -148,6 +151,12 @@ def generate_level(file_path):
                             cls(x, y, 'r')
                         elif key == 'g':
                             cls(x, y, 'g')
+                        elif key == "M":
+                            global move_counter
+                            with open("Moves.txt", "r", encoding="Utf-8") as e:
+                                r = e.readlines()[move_counter]
+                            cls(x, y, r)
+                            move_counter += 1
                         else:
                             cls(x, y)
 
@@ -211,6 +220,39 @@ class Box(pygame.sprite.Sprite):
         super().__init__(all_sprites, wall_group, *groups)
         self.image = sprites["box"]
         self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+
+
+class MovePlatform(pygame.sprite.Sprite):
+    def __init__(self, x, y, way, *groups):
+        super().__init__(all_sprites, wall_group, *groups)
+        self.image = sprites["move_platform"]
+        self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+        if way.split()[0] == "W":
+            self.x_way = 0
+            self.y_way = 1
+        elif way.split()[0] == "A":
+            self.x_way = -1
+            self.y_way = 0
+        elif way.split()[0] == "D":
+            self.x_way = 1
+            self.y_way = 0
+        elif way.split()[0] == "S":
+            self.x_way = 0
+            self.y_way = -1
+        self.range = int(way.split()[1]) * 2
+        self.move_counter = 0
+
+    def update(self, *args, **kwargs):
+        speed = 2
+        if self.move_counter <= self.range // 2:
+            vector = 1
+        elif self.move_counter > self.range:
+            self.move_counter = 0
+            vector = 1
+        else:
+            vector = -1
+        self.rect.move_ip(speed * self.x_way * vector, speed * self.y_way * vector)
+        self.move_counter += 1
 
 
 class Spike(pygame.sprite.Sprite):
@@ -300,8 +342,8 @@ class AnimatedSprite(pygame.sprite.Sprite):
         speed = 2
         self.rect.move_ip(0, self.gravity)
         for el in wall_group.sprites():
-            if isinstance(el, Box) or (isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'r') or (
-                    isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'g'):
+            if isinstance(el, Box) or isinstance(el, MovePlatform) or (isinstance(el, Spike) and (
+                    (el.get_color() == 'r' and self.color == 'r') or (el.get_color() == 'g' and self.color == 'g'))):
                 if pygame.sprite.collide_rect(self, el):
                     if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
                         self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
@@ -332,6 +374,7 @@ game_object = {
     "r": Spike,
     'g': Spike,
     "#": Box,
+    "M": MovePlatform
 }
 
 start_screen()
