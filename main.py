@@ -34,14 +34,22 @@ def rot_center(image, angle):
 
 
 def levels_screen():
+    coords = []
     lvl_width, lvl_height = WIDTH // 5, HEIGHT // 3.5
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     x1, y1 = lvl_width // 2, lvl_height // 2
-    for i in range(7):
+    font = pygame.font.Font(None, 50)
+    for i in range(6):
+        coords.append((x1, y1))
         pygame.draw.rect(screen, 'white', (x1, y1, lvl_width, lvl_height))
+        string_rendered = font.render(str(i + 1), 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = y1 + lvl_height // 2
+        intro_rect.x = x1 + lvl_width // 2
+        screen.blit(string_rendered, intro_rect)
         x1 += round(lvl_width * 1.5)
-        if i == 3:
+        if i == 2:
             y1 += round(lvl_height * 1.5)
             x1 = lvl_width // 2
 
@@ -49,8 +57,11 @@ def levels_screen():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen(levels[0])
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                for i in range(len(coords)):
+                    if coords[i][0] <= x <= coords[i][0] + lvl_width and coords[i][1] <= y <= coords[i][1] + lvl_height:
+                        return game_screen(levels[i])
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -141,7 +152,7 @@ def generate_level(file_path):
 
 
 def game_screen(file_path):
-    generate_level("levels/level1.txt")
+    generate_level(file_path)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
