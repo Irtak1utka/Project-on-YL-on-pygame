@@ -14,6 +14,9 @@ wall_group = pygame.sprite.Group()
 spikes_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
+levels = ['levels/level1.txt', 'levels/level2.txt', 'levels/level3.txt', 'levels/level4.txt', 'levels/level5.txt',
+          'levels/level6.txt']
+
 
 def terminate():
     pygame.quit()
@@ -29,6 +32,27 @@ def rot_center(image, angle):
     # or return tuple: (Surface, Rect)
     # return rot_sprite, rot_sprite.get_rect()
 
+
+def levels_screen():
+    lvl_width, lvl_height = WIDTH // 5, HEIGHT // 3.5
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    x1, y1 = lvl_width // 2, lvl_height // 2
+    for i in range(7):
+        pygame.draw.rect(screen, 'white', (x1, y1, lvl_width, lvl_height))
+        x1 += round(lvl_width * 1.5)
+        if i == 3:
+            y1 += round(lvl_height * 1.5)
+            x1 = lvl_width // 2
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                return game_screen(levels[0])
+        pygame.display.flip()
+        clock.tick(FPS)
 
 def start_screen():
     intro_text = ["                       ОГОНЬ И ЗЕМЛЯ", "", '', '',
@@ -57,7 +81,7 @@ def start_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen("level1.txt")
+                return levels_screen()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -117,12 +141,12 @@ def generate_level(file_path):
 
 
 def game_screen(file_path):
-    generate_level("level1.txt")
+    generate_level("levels/level1.txt")
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN and player_group.sprites():
+            elif event.type == pygame.KEYDOWN and player_group.sprites() and not player_group.sprites()[0].get_death():
                 player_group.update()
             elif player_group.sprites() and (
                     player_group.sprites()[0].get_death() or player_group.sprites()[1].get_death()):
@@ -136,23 +160,36 @@ def game_screen(file_path):
         clock.tick(FPS)
 
 
-
 def death_screen():
+    pygame.time.wait(500)
     for sprite in all_sprites:
         sprite.kill()
-    pygame.time.wait(500)
-
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
+    intro_text = ["                          ВЫ ПРОИГРАЛИ", "", '', '',
+                  "Не забывайте, что зеленый динозаврик",
+                  "не может ходить по лаве, а красный",
+                  "не может ходить по воде."]
+    font = pygame.font.Font(None, 50)
+    text_coord = 100
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 150
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == (pygame.KEYDOWN or pygame.MOUSEBUTTONDOWN):
-                return game_screen('level1.txt')
-        fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
-        screen.blit(fon, (0, 0))
-        pygame.draw.rect(screen, 'white', (100, 100, 400, 500))
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                return game_screen('levels/level1.txt')
         pygame.display.flip()
         clock.tick(FPS)
+
 
 tile_width = tile_height = 32
 
