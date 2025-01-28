@@ -19,6 +19,7 @@ def terminate():
     pygame.quit()
     sys.exit()
 
+
 def rot_center(image, angle):
     """rotate a Surface, maintaining position."""
     loc = image.get_rect().center  # rot_image is not defined
@@ -116,16 +117,16 @@ def generate_level(file_path):
 
 
 def game_screen(file_path):
-    print(player_group.sprites())
-    print(all_sprites.sprites())
     generate_level("level1.txt")
-    death = False
-    while not death:
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN and not player_group.sprites()[0].get_death():
+            elif event.type == pygame.KEYDOWN and player_group.sprites():
                 player_group.update()
+            elif player_group.sprites() and (
+                    player_group.sprites()[0].get_death() or player_group.sprites()[1].get_death()):
+                return death_screen()
         fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
@@ -134,9 +135,24 @@ def game_screen(file_path):
         pygame.display.flip()
         clock.tick(FPS)
 
+
+
 def death_screen():
     for sprite in all_sprites:
         sprite.kill()
+    pygame.time.wait(500)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == (pygame.KEYDOWN or pygame.MOUSEBUTTONDOWN):
+                return game_screen('level1.txt')
+        fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+        screen.blit(fon, (0, 0))
+        pygame.draw.rect(screen, 'white', (100, 100, 400, 500))
+        pygame.display.flip()
+        clock.tick(FPS)
 
 tile_width = tile_height = 32
 
@@ -166,13 +182,13 @@ class Spike(pygame.sprite.Sprite):
 
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, x, y, fn, color, *groups):
-        self.death = False
         super().__init__(all_sprites, player_group, *groups)
         self.frames = []
         self.cut_sheet(load_image(fn), 24, 1)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
+        self.death = False
 
         self.jump = False
         self.jumpCount = 0
@@ -180,12 +196,6 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.vector = 1
         self.color = color
         self.gravity = 4
-
-    def get_death(self):
-        return self.death
-
-    def set_death(self, b):
-        self.death = b
 
     def cut_sheet(self, sheet, columns, rows):
         self.tile_height = sheet.get_height() // rows
@@ -258,11 +268,13 @@ class AnimatedSprite(pygame.sprite.Sprite):
                         self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
                         print("Down")
             elif (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
-                isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
+                    isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
                 if pygame.sprite.collide_rect(self, el):
-                    player_group.sprites()[0].set_death(True)
-                    death_screen()
+                    self.death = True
         self.rect.move_ip(speed * (d - a), 0)
+
+    def get_death(self):
+        return self.death
 
 
 game_object = {
