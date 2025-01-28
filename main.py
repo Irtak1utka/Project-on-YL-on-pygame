@@ -8,11 +8,15 @@ size = WIDTH, HEIGHT = 1000, 800
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 FPS = 30
+move_counter = 0
 
 all_sprites = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
 spikes_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
+
+levels = ['levels/level1.txt', 'levels/level2.txt', 'levels/level3.txt', 'levels/level4.txt', 'levels/level5.txt',
+          'levels/level6.txt']
 
 
 def terminate():
@@ -28,6 +32,39 @@ def rot_center(image, angle):
     return rot_sprite
     # or return tuple: (Surface, Rect)
     # return rot_sprite, rot_sprite.get_rect()
+
+
+def levels_screen():
+    coords = []
+    lvl_width, lvl_height = WIDTH // 5, HEIGHT // 3.5
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    x1, y1 = lvl_width // 2, lvl_height // 2
+    font = pygame.font.Font(None, 50)
+    for i in range(6):
+        coords.append((x1, y1))
+        pygame.draw.rect(screen, 'white', (x1, y1, lvl_width, lvl_height))
+        string_rendered = font.render(str(i + 1), 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = y1 + lvl_height // 2
+        intro_rect.x = x1 + lvl_width // 2
+        screen.blit(string_rendered, intro_rect)
+        x1 += round(lvl_width * 1.5)
+        if i == 2:
+            y1 += round(lvl_height * 1.5)
+            x1 = lvl_width // 2
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                for i in range(len(coords)):
+                    if coords[i][0] <= x <= coords[i][0] + lvl_width and coords[i][1] <= y <= coords[i][1] + lvl_height:
+                        return game_screen(levels[i])
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 def start_screen():
@@ -57,7 +94,7 @@ def start_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen("level1.txt")
+                return levels_screen()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -96,6 +133,8 @@ sprites = {
 
 
 def generate_level(file_path):
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
     level_map = load_level(file_path)
     for g_o in game_object:
         for y, line in enumerate(level_map):
@@ -106,28 +145,68 @@ def generate_level(file_path):
                         if key == 'R':
                             cls(x * tile_width, y * tile_height, 'sprites/Players/DinoRed.png', 'r')
                         elif key == 'G':
-                            cls(x * tile_width, y * tile_height, 'sprites/Players/Dino.png', 'g')
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/green_dino.png', 'g')
                         elif key == 'r':
                             cls(x, y, 'r')
                         elif key == 'g':
                             cls(x, y, 'g')
+                        elif key == "M":
+                            global move_counter
+                            with open("Moves.txt", "r", encoding="Utf-8") as e:
+                                r = e.readlines()[move_counter]
+                            cls(x, y, r)
+                            move_counter += 1
                         else:
                             cls(x, y)
 
 
 def game_screen(file_path):
-    generate_level("level1.txt")
+    generate_level(file_path)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN and player_group.sprites() and not player_group.sprites()[0].get_death():
                 player_group.update()
+            elif player_group.sprites() and (
+                    player_group.sprites()[0].get_death() or player_group.sprites()[1].get_death()):
+                return death_screen()
         fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         all_sprites.update()
         # player_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def death_screen():
+    pygame.time.wait(500)
+    for sprite in all_sprites:
+        sprite.kill()
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
+    intro_text = ["                          ВЫ ПРОИГРАЛИ", "", '', '',
+                  "Не забывайте, что зеленый динозаврик",
+                  "не может ходить по лаве, а красный",
+                  "не может ходить по воде."]
+    font = pygame.font.Font(None, 50)
+    text_coord = 100
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 150
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                return game_screen('levels/level1.txt')
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -140,6 +219,39 @@ class Box(pygame.sprite.Sprite):
         super().__init__(all_sprites, wall_group, *groups)
         self.image = sprites["box"]
         self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+
+
+class MovePlatform(pygame.sprite.Sprite):
+    def __init__(self, x, y, way, *groups):
+        super().__init__(all_sprites, wall_group, *groups)
+        self.image = sprites["move_platform"]
+        self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+        if way.split()[0] == "W":
+            self.x_way = 0
+            self.y_way = 1
+        elif way.split()[0] == "A":
+            self.x_way = -1
+            self.y_way = 0
+        elif way.split()[0] == "D":
+            self.x_way = 1
+            self.y_way = 0
+        elif way.split()[0] == "S":
+            self.x_way = 0
+            self.y_way = -1
+        self.range = int(way.split()[1]) * 2
+        self.move_counter = 0
+
+    def update(self, *args, **kwargs):
+        speed = 2
+        if self.move_counter <= self.range // 2:
+            vector = 1
+        elif self.move_counter > self.range:
+            self.move_counter = 0
+            vector = 1
+        else:
+            vector = -1
+        self.rect.move_ip(speed * self.x_way * vector, speed * self.y_way * vector)
+        self.move_counter += 1
 
 
 class Spike(pygame.sprite.Sprite):
@@ -158,21 +270,15 @@ class Spike(pygame.sprite.Sprite):
         return self.color
 
 
-class MovePlatform(pygame.sprite.Sprite):
-    def __init__(self, x, y, *groups):
-        super().__init__(all_sprites, wall_group, *groups)
-        self.image = sprites["move_platform"]
-        self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
-
-
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, x, y, fn, color):
-        super().__init__(player_group, all_sprites)
+    def __init__(self, x, y, fn, color, *groups):
+        super().__init__(all_sprites, player_group, *groups)
         self.frames = []
         self.cut_sheet(load_image(fn), 24, 1)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
+        self.death = False
 
         self.jump = False
         self.jumpCount = 0
@@ -219,7 +325,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 self.vector = 1
         else:
             st = 0
-            ed = 4
+            ed = 2
         self.fr = self.frames[st:ed]
         self.cur_frame = (self.cur_frame + 1) % len(self.fr)
         self.image = self.fr[self.cur_frame]
@@ -238,13 +344,13 @@ class AnimatedSprite(pygame.sprite.Sprite):
             if pygame.sprite.collide_rect(self, el):
                 if (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
                         isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
-                    terminate()
+                    self.death = True
                 else:
                     if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
                         self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
                         print("Up")
                         self.jump = False
-                    if self.rect.x + self.tile_width - el.rect.x <= speed and self.rect.y + self.tile_height - el.rect.y > self.gravity:
+                    if self.rect.x + self.tile_width - el.rect.x <= speed:
                         self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
                         print("left")
                     if el.rect.x + tile_width - self.rect.x <= speed and self.rect.y + self.tile_height - el.rect.y > self.gravity:
@@ -253,8 +359,10 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     if el.rect.y + tile_height - self.rect.y <= self.jumpMax and self.rect.y + self.tile_height > el.rect.y + tile_height:
                         self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
                         print("Down")
-
         self.rect.move_ip(speed * (d - a), 0)
+
+    def get_death(self):
+        return self.death
 
 
 game_object = {
@@ -263,7 +371,7 @@ game_object = {
     "r": Spike,
     'g': Spike,
     "#": Box,
-    "M": MovePlatform
+    "M": MovePlatform,
 }
 
 start_screen()
