@@ -4,10 +4,10 @@ import sys
 import pygame
 
 pygame.init()
-size = WIDTH, HEIGHT = 500, 500
+size = WIDTH, HEIGHT = 1000, 800
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
-FPS = 10
+FPS = 30
 
 all_sprites = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
@@ -31,21 +31,23 @@ def rot_center(image, angle):
 
 
 def start_screen():
-    intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
+    intro_text = ["                       ОГОНЬ И ЗЕМЛЯ", "", '', '',
+                  "Ваша задача - вместе решать головоломки.",
+                  "Зеленый динозаврик не может наступать на",
+                  "красные области,",
+                  "а красный - на зелёные.",
+                  ""]
 
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
+    font = pygame.font.Font(None, 50)
+    text_coord = 100
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        string_rendered = font.render(line, 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
+        intro_rect.x = 100
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
@@ -87,8 +89,9 @@ def load_level(file_path: str):
 
 sprites = {
     "box": load_image('sprites/Box/Tile_02.png'),
-    # "grass": load_image("grass.png"),
-    # "mario": load_image("mario.png")
+    "water": load_image("sprites/Spikes/water.png"),
+    "lava": load_image("sprites/Spikes/lava.png"),
+    "move_platform": load_image("sprites/Box/Tile_07.png")
 }
 
 
@@ -98,13 +101,18 @@ def generate_level(file_path):
         for y, line in enumerate(level_map):
             for x, key in enumerate(line):
                 if key == g_o:
-                    if key == "P":
-                        cls = game_object.get(".", None)
-                        if cls is not None:
-                            cls(x, y)
                     cls = game_object.get(key, None)
                     if cls is not None:
-                        cls(x, y)
+                        if key == 'R':
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/DinoRed.png', 'r')
+                        elif key == 'G':
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/Dino.png', 'g')
+                        elif key == 'r':
+                            cls(x, y, 'r')
+                        elif key == 'g':
+                            cls(x, y, 'g')
+                        else:
+                            cls(x, y)
 
 
 def game_screen(file_path):
@@ -135,33 +143,42 @@ class Box(pygame.sprite.Sprite):
 
 
 class Spike(pygame.sprite.Sprite):
+    def __init__(self, x, y, color, *groups):
+        super().__init__(all_sprites, wall_group, *groups)
+        self.color = color
+        if color == 'r':
+            self.image = sprites["lava"]
+            print('lava')
+        else:
+            self.image = sprites['water']
+            print('water')
+        self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+
+    def get_color(self):
+        return self.color
+
+
+class MovePlatform(pygame.sprite.Sprite):
     def __init__(self, x, y, *groups):
         super().__init__(all_sprites, wall_group, *groups)
-        self.image = sprites["mario"]
+        self.image = sprites["move_platform"]
         self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
 
 
-class Tile(pygame.sprite.Sprite):
-    def __init__(self, tile_type, pos_x, pos_y):
-        super().__init__(tiles_group, all_sprites)
-        self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x, tile_height * pos_y)
-
-
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, fn, color):
         super().__init__(player_group, all_sprites)
         self.frames = []
-        self.cut_sheet(load_image("sprites/Players/Dino 32.png"), 24, 1)
+        self.cut_sheet(load_image(fn), 24, 1)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
-        self.rect = self.rect.move(x * tile_width, y * tile_height)
+        self.rect = self.rect.move(x, y)
 
         self.jump = False
         self.jumpCount = 0
         self.jumpMax = 13
         self.vector = 1
+        self.color = color
         self.gravity = 4
 
     def cut_sheet(self, sheet, columns, rows):
@@ -177,9 +194,14 @@ class AnimatedSprite(pygame.sprite.Sprite):
 
     def update(self):
         pressed_keys = pygame.key.get_pressed()
-        w = pressed_keys[pygame.K_w]
-        d = pressed_keys[pygame.K_d]
-        a = pressed_keys[pygame.K_a]
+        if self.color == 'r':
+            w = pressed_keys[pygame.K_UP]
+            d = pressed_keys[pygame.K_RIGHT]
+            a = pressed_keys[pygame.K_LEFT]
+        else:
+            w = pressed_keys[pygame.K_w]
+            d = pressed_keys[pygame.K_d]
+            a = pressed_keys[pygame.K_a]
         if a and not (w and d):
             st = 2
             ed = 6
@@ -208,17 +230,21 @@ class AnimatedSprite(pygame.sprite.Sprite):
             self.rect.y -= self.jumpCount
             if self.jumpCount > -self.jumpMax:
                 self.jumpCount -= 1
-
+            else:
+                self.jump = False
         speed = 2
         self.rect.move_ip(0, self.gravity)
         for el in wall_group.sprites():
-            if isinstance(el, Box):
-                if pygame.sprite.collide_rect(player_group.sprites()[0], el):
+            if pygame.sprite.collide_rect(self, el):
+                if (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
+                        isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
+                    terminate()
+                else:
                     if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
                         self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
                         print("Up")
                         self.jump = False
-                    if self.rect.x + self.tile_width - el.rect.x <= speed:
+                    if self.rect.x + self.tile_width - el.rect.x <= speed and self.rect.y + self.tile_height - el.rect.y > self.gravity:
                         self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
                         print("left")
                     if el.rect.x + tile_width - self.rect.x <= speed and self.rect.y + self.tile_height - el.rect.y > self.gravity:
@@ -227,13 +253,17 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     if el.rect.y + tile_height - self.rect.y <= self.jumpMax and self.rect.y + self.tile_height > el.rect.y + tile_height:
                         self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
                         print("Down")
+
         self.rect.move_ip(speed * (d - a), 0)
 
 
 game_object = {
-    "P": AnimatedSprite,
-    "^": Spike,
+    "G": AnimatedSprite,
+    'R': AnimatedSprite,
+    "r": Spike,
+    'g': Spike,
     "#": Box,
+    "M": MovePlatform
 }
 
 start_screen()
