@@ -75,14 +75,15 @@ def start_screen():
 
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
+    pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
     font = pygame.font.Font(None, 50)
-    text_coord = 100
+    text_coord = 110
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('white'))
+        string_rendered = font.render(line, 1, pygame.Color('black'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 100
+        intro_rect.x = 120
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
@@ -161,7 +162,7 @@ def game_screen(file_path):
                 player_group.update()
             elif player_group.sprites() and (
                     player_group.sprites()[0].get_death() or player_group.sprites()[1].get_death()):
-                return death_screen()
+                return death_screen(file_path)
         fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
@@ -171,14 +172,14 @@ def game_screen(file_path):
         clock.tick(FPS)
 
 
-def death_screen():
+def death_screen(file_path):
     pygame.time.wait(500)
     for sprite in all_sprites:
         sprite.kill()
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
-    intro_text = ["                          ВЫ ПРОИГРАЛИ", "", '', '',
+    intro_text = ["                        ВЫ ПРОИГРАЛИ", "", '', '',
                   "Не забывайте, что зеленый динозаврик",
                   "не может ходить по лаве, а красный",
                   "не может ходить по воде."]
@@ -197,7 +198,7 @@ def death_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen('levels/level1.txt')
+                return game_screen(file_path)
         pygame.display.flip()
         clock.tick(FPS)
 
