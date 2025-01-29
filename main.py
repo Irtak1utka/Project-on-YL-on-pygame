@@ -39,8 +39,12 @@ def levels_screen():
     lvl_width, lvl_height = WIDTH // 5, HEIGHT // 3.5
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
+    pygame.draw.rect(screen, 'white', (10, 10, 50, 50))
     x1, y1 = lvl_width // 2, lvl_height // 2
     font = pygame.font.Font(None, 50)
+    string_rendered = font.render('<--', 1, 'black')
+    intro_rect = string_rendered.get_rect()
+    screen.blit(string_rendered, (10, 10))
     for i in range(6):
         coords.append((x1, y1))
         pygame.draw.rect(screen, 'white', (x1, y1, lvl_width, lvl_height))
@@ -63,6 +67,8 @@ def levels_screen():
                 for i in range(len(coords)):
                     if coords[i][0] <= x <= coords[i][0] + lvl_width and coords[i][1] <= y <= coords[i][1] + lvl_height:
                         return game_screen(levels[i])
+                    elif 10 <= x <= 60 and 10 <= y <= 60:
+                        return start_screen()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -78,6 +84,7 @@ def start_screen():
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
+    pygame.draw.rect(screen, (59, 191, 90), (400, 550, 200, 100))
     font = pygame.font.Font(None, 50)
     text_coord = 110
     for line in intro_text:
@@ -88,13 +95,17 @@ def start_screen():
         intro_rect.x = 120
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
+    string_rendered = font.render('Играть', 1, pygame.Color('black'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.top = 590
+    intro_rect.x = 440
+    screen.blit(string_rendered, intro_rect)
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN and 400 <= event.pos[0] <= 600 and 550 <= event.pos[1] <= 650:
                 return levels_screen()
         pygame.display.flip()
         clock.tick(FPS)
@@ -188,14 +199,25 @@ def death_screen(file_path):
     fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
+    pygame.draw.rect(screen, (59, 191, 90), (200, 500, 200, 100))
+    pygame.draw.rect(screen, (59, 191, 90), (600, 500, 200, 100))
     intro_text = ["                        ВЫ ПРОИГРАЛИ", "", '', '',
                   "Не забывайте, что зеленый динозаврик",
                   "не может ходить по лаве, а красный",
                   "не может ходить по воде."]
+    btns_text = ['Рестарт', 'Меню']
     font = pygame.font.Font(None, 50)
+    text_coord = 250
+    for s in btns_text:
+        string_rendered = font.render(s, 1, 'black')
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = 530
+        intro_rect.x = text_coord
+        screen.blit(string_rendered, intro_rect)
+        text_coord += 400
     text_coord = 100
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        string_rendered = font.render(line, 1, 'black')
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
@@ -207,7 +229,11 @@ def death_screen(file_path):
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                return game_screen(file_path)
+                x, y = event.pos
+                if 200 <= x <= 400 and 500 <= y <= 600:
+                    return game_screen(file_path)
+                elif 600 <= x <= 800 and 500 <= y <= 600:
+                    return levels_screen()
         pygame.display.flip()
         clock.tick(FPS)
 
