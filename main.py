@@ -140,7 +140,9 @@ sprites = {
     "box": load_image('sprites/Box/ground.png'),
     "water": load_image("sprites/Spikes/water.png"),
     "lava": load_image("sprites/Spikes/lava.png"),
-    'move_platform': load_image('sprites/Box/Tile_07.png')
+    'move_platform': load_image('sprites/Box/Tile_07.png'),
+    'r_door': load_image('sprites/Doors/red_door.png'),
+    'g_door': load_image('sprites/Doors/green_door.png')
 }
 
 
@@ -158,9 +160,9 @@ def generate_level(file_path):
                             cls(x * tile_width, y * tile_height, 'sprites/Players/red_dino.png', 'r')
                         elif key == 'G':
                             cls(x * tile_width, y * tile_height, 'sprites/Players/green_dino.png', 'g')
-                        elif key == 'r':
+                        elif key == 'r' or key == '(':
                             cls(x, y, 'r')
-                        elif key == 'g':
+                        elif key == 'g' or key == ')':
                             cls(x, y, 'g')
                         elif key == "M":
                             global move_counter
@@ -183,11 +185,40 @@ def game_screen(file_path):
             elif player_group.sprites() and (
                     player_group.sprites()[0].get_death() or player_group.sprites()[1].get_death()):
                 return death_screen(file_path)
+            elif player_group.sprites() and player_group.sprites()[0].get_win() and player_group.sprites()[1].get_win():
+                return win_screen(file_path)
         fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         all_sprites.update()
         # player_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def win_screen(file_path):
+    pygame.time.wait(500)
+    for sprite in all_sprites:
+        sprite.kill()
+    fon = pygame.transform.scale(load_image('sprites/Background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    pygame.draw.rect(screen, 'white', (100, 100, 800, 600))
+    intro_text = ["                        УРОВЕНЬ ПРОЙДЕН", "", '', '',
+                  "Ваш результат:"]  # потом будет когда таймер добавим
+    font = pygame.font.Font(None, 50)
+    text_coord = 250
+    for line in intro_text:
+        string_rendered = font.render(line, 1, 'black')
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 150
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -297,6 +328,20 @@ class Spike(pygame.sprite.Sprite):
         return self.color
 
 
+class Door(pygame.sprite.Sprite):
+    def __init__(self, x, y, color, *groups):
+        super().__init__(all_sprites, wall_group, *groups)
+        self.color = color
+        if self.color == 'r':
+            self.image = sprites['r_door']
+        else:
+            self.image = sprites['g_door']
+        self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+
+    def get_color(self):
+        return self.color
+
+
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, x, y, fn, color, *groups):
         super().__init__(all_sprites, player_group, *groups)
@@ -306,6 +351,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.image = self.frames[self.cur_frame]
         self.rect = self.rect.move(x, y)
         self.death = False
+        self.win = False
 
         self.jump = False
         self.jumpCount = 0
@@ -373,25 +419,30 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 if pygame.sprite.collide_rect(self, el):
                     if self.rect.y + self.tile_height > el.rect.y and self.rect.y < el.rect.y:
                         self.rect.move_ip(0, el.rect.y - (self.rect.y + self.tile_height))
-                        print("Up")
                         self.jump = False
                     if self.rect.x + self.tile_width - el.rect.x <= speed:
                         self.rect.move_ip(-(self.rect.x + self.tile_width - el.rect.x), 0)
-                        print("left")
                     if el.rect.x + tile_width - self.rect.x <= speed and self.rect.y + self.tile_height - el.rect.y > self.gravity:
                         self.rect.move_ip(el.rect.x + tile_width - self.rect.x, 0)
-                        print("right")
                     if el.rect.y + tile_height - self.rect.y <= self.jumpMax and self.rect.y + self.tile_height > el.rect.y + tile_height:
                         self.rect.move_ip(0, el.rect.y + tile_height - self.rect.y)
-                        print("Down")
-            elif (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
+            if (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
                     isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
                 if pygame.sprite.collide_rect(self, el):
                     self.death = True
+            if (isinstance(el, Door) and el.get_color() == 'g' and self.color == 'g') or (
+                    isinstance(el, Door) and el.get_color() == 'r' and self.color == 'r'):
+                if pygame.sprite.collide_rect(self, el):
+                    self.win = True
+                else:
+                    self.win = False
         self.rect.move_ip(speed * (d - a), 0)
 
     def get_death(self):
         return self.death
+
+    def get_win(self):
+        return self.win
 
 
 game_object = {
@@ -400,7 +451,9 @@ game_object = {
     "r": Spike,
     'g': Spike,
     "#": Box,
-    "M": MovePlatform
+    "M": MovePlatform,
+    '(': Door,
+    ')': Door
 }
 
 start_screen()
