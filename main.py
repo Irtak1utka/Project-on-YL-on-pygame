@@ -13,6 +13,9 @@ end_time = ""
 FPS = 30
 move_counter = 0
 score = 100
+pygame.mixer.music.load("sounds/Magical Forest.wav")
+pygame.mixer.music.set_volume(0.05)
+pygame.mixer.music.play(-1)
 
 all_sprites = pygame.sprite.Group()
 wall_group = pygame.sprite.Group()
@@ -23,6 +26,11 @@ platform_group = pygame.sprite.Group()
 
 levels = ['levels/level1.txt', 'levels/level2.txt', 'levels/level3.txt', 'levels/level4.txt', 'levels/level5.txt',
           'levels/level6.txt']
+
+jump_sound_r = pygame.mixer.Sound("sounds/Jump.wav")
+jump_sound_r.set_volume(0.1)
+jump_sound_g = pygame.mixer.Sound("sounds/Retro Jump 01.wav")
+jump_sound_g.set_volume(0.2)
 
 
 def terminate():
@@ -80,6 +88,8 @@ def levels_screen():
 
 
 def start_screen():
+    # pygame.mixer.music.load("sounds/Vintik.mp3")
+    # pygame.mixer.music.play(-1)
     intro_text = ["                       ОГОНЬ И ЗЕМЛЯ", "", '', '',
                   "Ваша задача - вместе решать головоломки.",
                   "Зеленый динозаврик не может наступать на",
@@ -214,6 +224,7 @@ def generate_level(file_path):
 
 
 def game_screen(file_path):
+    pygame.mixer.music.play()
     generate_level(file_path)
     while True:
         for event in pygame.event.get():
@@ -266,6 +277,10 @@ def game_screen(file_path):
 
 
 def win_screen(file_path):
+    pygame.mixer.music.stop()
+    win_sound = pygame.mixer.Sound("sounds/Victory.wav")
+    win_sound.set_volume(0.1)
+    win_sound.play(-1)
     global end_time
     pygame.time.wait(500)
     for sprite in all_sprites:
@@ -277,7 +292,7 @@ def win_screen(file_path):
     pygame.draw.rect(screen, (59, 191, 90), (400, 500, 200, 100))
     pygame.draw.rect(screen, (59, 191, 90), (650, 500, 200, 100))
     intro_text = ["                     УРОВЕНЬ ПРОЙДЕН", "", '', '',
-                  f"Ваш результат: {end_time}", f"Ваш счёт: {score}"]  # потом будет когда таймер добавим
+                  f"Ваш результат: {end_time}", f"Ваш счёт: {score}"]
     btns_text = ['->', 'Меню', '  Рестарт']
     font = pygame.font.Font(None, 50)
     text_coord = 250
@@ -303,6 +318,7 @@ def win_screen(file_path):
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
+                win_sound.stop()
                 if 500 <= y <= 600:
                     if 150 <= x <= 350:
                         l = levels.index(file_path) + 1
@@ -320,6 +336,9 @@ def win_screen(file_path):
 
 def death_screen(file_path):
     pygame.time.wait(500)
+    pygame.mixer.music.stop()
+    end_sound = pygame.mixer.Sound("sounds/GameOver.wav")
+    end_sound.play()
     for sprite in all_sprites:
         sprite.kill()
         global move_counter
@@ -358,6 +377,7 @@ def death_screen(file_path):
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
+                end_sound.stop()
                 if 200 <= x <= 400 and 500 <= y <= 600:
                     return game_screen(file_path)
                 elif 600 <= x <= 800 and 500 <= y <= 600:
@@ -491,13 +511,22 @@ class Dimond(pygame.sprite.Sprite):
         else:
             self.image = sprites["banana"]
         self.rect = self.image.get_rect().move(x * tile_width, y * tile_height)
+        self.start_y = self.rect.y
+        self.vector = 1
+        self.tick = pygame.time.get_ticks()
 
     def update(self, *args, **kwargs):
         global score
+        if self.rect.y > self.start_y + 5 or self.rect.y < self.start_y - 5:
+            self.vector *= -1
+        self.rect.move_ip(0, 1 * self.vector)
         for el in player_group:
             if pygame.sprite.collide_rect(self, el):
                 if (el.get_color() == "g" and self.color == "b") or (el.get_color() == "r" and self.color == "m"):
                     score += 300
+                    coin_sound = pygame.mixer.Sound("sounds/Retro PickUp Coin StereoUP 04.wav")
+                    coin_sound.set_volume(0.1)
+                    coin_sound.play()
                     self.kill()
 
 
@@ -578,6 +607,10 @@ class AnimatedSprite(pygame.sprite.Sprite):
         if not self.jump and w:
             self.jump = True
             self.jumpCount = self.jumpMax
+            if self.color == "r":
+                jump_sound_r.play()
+            else:
+                jump_sound_g.play()
         if self.jump:
             self.rect.y -= self.jumpCount
             if self.jumpCount > -self.jumpMax:
@@ -593,6 +626,9 @@ class AnimatedSprite(pygame.sprite.Sprite):
             if pygame.sprite.collide_rect(self, el):
                 if (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
                         isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
+                    if not self.death:
+                        lose_sound = pygame.mixer.Sound("sounds/SFX_Lose08.ogg")
+                        lose_sound.play(0)
                     self.death = True
                 elif (isinstance(el, Door) and el.get_color() == 'g' and self.color == 'g') or (
                         isinstance(el, Door) and el.get_color() == 'r' and self.color == 'r'):
