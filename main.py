@@ -198,9 +198,9 @@ def generate_level(file_path):
                     cls = game_object.get(key, None)
                     if cls is not None:
                         if key == 'R':
-                            cls(x * tile_width, y * tile_height, 'sprites/Players/red_dino.png', 'r')
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/red_dino-export.png', 'r')
                         elif key == 'G':
-                            cls(x * tile_width, y * tile_height, 'sprites/Players/green_dino.png', 'g')
+                            cls(x * tile_width, y * tile_height, 'sprites/Players/green_dino-export.png', 'g')
                         elif key == 'r' or key == '(':
                             cls(x, y, 'r')
                         elif key == 'g' or key == ')':
@@ -624,8 +624,11 @@ class AnimatedSprite(pygame.sprite.Sprite):
             #         isinstance(el, Spike) and (
             #         (el.get_color() == 'r' and self.color == 'r') or (el.get_color() == 'g' and self.color == 'g'))):
             if pygame.sprite.collide_rect(self, el):
-                if (isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
-                        isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'):
+                if (((isinstance(el, Spike) and el.get_color() == 'g' and self.color == 'r') or (
+                        isinstance(el, Spike) and el.get_color() == 'r' and self.color == 'g'))
+                        and self.rect.y + self.tile_height - el.rect.y > 3 and (
+                                abs(self.rect.x - el.rect.x - tile_width) > 16 or
+                                abs(el.rect.x + tile_width - self.rect.x) > 16)):
                     if not self.death:
                         lose_sound = pygame.mixer.Sound("sounds/SFX_Lose08.ogg")
                         lose_sound.play(0)
