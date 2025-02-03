@@ -573,6 +573,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
                     frame_location, self.rect.size)))
 
     def update(self):
+        self.win = False
         pressed_keys = pygame.key.get_pressed()
         if self.color == 'r':
             w = pressed_keys[pygame.K_UP]
