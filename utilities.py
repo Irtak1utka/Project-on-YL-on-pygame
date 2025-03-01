@@ -1,7 +1,7 @@
 import pygame
 import sys
 import os
-
+from global_variables import *
 
 def terminate():
     pygame.quit()
@@ -18,7 +18,7 @@ def load_image(name, colorkey=None):
 
 
 def load_level(file_path: str):
-    with open(file_path) as e:
+    with open(file_path, encoding="utf-8") as e:
         level_map = [line.strip() for line in e]
 
     h = len(level_map)
@@ -48,7 +48,7 @@ colors = {
 }
 
 sprites = {
-    "box": load_image('sprites/Box/ground.png'),
+    # "box": load_image('sprites/Box/ground.png'),
     "water": load_image("sprites/Spikes/water.png"),
     "lava": load_image("sprites/Spikes/lava.png"),
     'move_platform': load_image('sprites/Box/Tile_07.png'),

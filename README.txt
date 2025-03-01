@@ -1,0 +1,1 @@
+This is a free computer game SwampDinoHeroesFree witch was created by "солянка G lf." and "Иртак Мешнов"
